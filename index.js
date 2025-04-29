@@ -1,70 +1,43 @@
-import * as cheerio from 'cheerio';
-
 import Tesseract from 'tesseract.js';
-import axios from 'axios';
+import cors from 'cors';
 import express from 'express';
-import fs from 'fs';
-import { default as pdfParse } from 'pdf-parse/lib/pdf-parse.js';
+import multer from 'multer';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 
-// Initialize the Express app
 const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
+
 app.use(express.json());
+app.use(cors());
 
-// Endpoint for PDF text extraction
-app.post('/extract-pdf', async (req, res) => {
+// API Endpoint for PDF Upload
+app.post('/upload-pdf', upload.single('file'), async (req, res) => {
     try {
-        const { filePath } = req.body;
-
-        // Resolve the absolute file path based on the current directory
-        // const resolvedPath = path.resolve(__dirname, filePath);
-
-        // // Check if the file exists
-        // if (!fs.existsSync(resolvedPath)) {
-        //     return res.status(400).json({ error: 'File not found' });
-        // }
-
-        const data = await fs.promises.readFile(filePath);
-        const pdfData = await pdfParse(data);
+        const dataBuffer = req.file.buffer;
+        const pdfData = await pdfParse(dataBuffer);
         res.json({ rawText: pdfData.text });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to extract text from PDF' });
+        console.error(error);
+        res.status(500).json({ error: 'Failed to extract text from uploaded PDF' });
     }
 });
 
-
-//TODO: Image extraction not accurate with hand written text
-// Endpoint for Image text extraction (OCR)
-app.post('/extract-image', async (req, res) => {
+// API Endpoint for Image Upload
+app.post('/upload-image', upload.single('file'), async (req, res) => {
     try {
-        const { imagePath } = req.body; // Image file path
-        const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', { logger: (m) => console.log(m) });
+        const { data: { text } } = await Tesseract.recognize(req.file.buffer, 'eng');
         res.json({ rawText: text });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to extract text from image' });
+        console.error(error);
+        res.status(500).json({ error: 'Failed to extract text from uploaded image' });
     }
 });
 
-// Endpoint for Website text extraction (Scraping)
-app.post('/extract-website', async (req, res) => {
-    try {
-        const { url } = req.body; // Website URL
-        const { data } = await axios.get(url);
-        const $ = cheerio.load(data);
-
-        // Extracting a simple title and recipe description (adjust as needed)
-        // const title = $('h1').text();
-        // const description = $('p.description').text();
-        // const rawText = `Title: ${title}\nDescription: ${description}`;
-
-        const rawText = $('body').text();
-
-        res.json({ rawText });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to extract text from website' });
-    }
+// API Endpoint to confirm server is running
+app.get('/', (_req, res) => {
+    res.send('Raw Text Extractor is running!');
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Microservice running on port ${PORT}`);
