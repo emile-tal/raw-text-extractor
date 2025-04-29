@@ -16,14 +16,14 @@ app.post('/extract-pdf', async (req, res) => {
         const { filePath } = req.body;
 
         // Resolve the absolute file path based on the current directory
-        const resolvedPath = path.resolve(__dirname, filePath);
+        // const resolvedPath = path.resolve(__dirname, filePath);
 
-        // Check if the file exists
-        if (!fs.existsSync(resolvedPath)) {
-            return res.status(400).json({ error: 'File not found' });
-        }
+        // // Check if the file exists
+        // if (!fs.existsSync(resolvedPath)) {
+        //     return res.status(400).json({ error: 'File not found' });
+        // }
 
-        const data = await fs.promises.readFile(resolvedPath);
+        const data = await fs.promises.readFile(filePath);
         const pdfData = await pdfParse(data);
         res.json({ rawText: pdfData.text });
     } catch (error) {
@@ -31,6 +31,8 @@ app.post('/extract-pdf', async (req, res) => {
     }
 });
 
+
+//TODO: Image extraction not accurate with hand written text
 // Endpoint for Image text extraction (OCR)
 app.post('/extract-image', async (req, res) => {
     try {
